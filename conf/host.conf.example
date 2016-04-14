@@ -1,0 +1,11 @@
+#[pdu]
+#name = sentry
+#dbtype = sqlite
+#database = sentry3.db
+#snmpdata = snmpdata/sentry
+#
+#[esxihost]
+#host = 10.62.59.128
+#username = root
+#password = 01234567
+

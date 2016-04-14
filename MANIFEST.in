@@ -1,0 +1,5 @@
+include README.md
+recursive-include snmpdata *.snmprec *.db
+recursive-include variation *.py
+recursive-include conf *.conf password
+recursive-include third-party *.rst *.py *.bat *.css README* LICENSE Makefile 
