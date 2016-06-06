@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 '''
 *********************************************************
@@ -94,126 +94,128 @@ def start_vpdu():
     return retcode
 
 
-def get_ip_address(ifname):
-    try:
+class NetworkUtils:
+    @staticmethod
+    def get_ip_address(ifname):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            ifreq = struct.pack('16sH14s', ifname, AF_UNIX, '\x00'*14)
+            res = fcntl.ioctl(s.fileno(), SIOCGIFADDR, ifreq)
+            ip = struct.unpack('16sH2x4s8x', res)[2]
+            s.close()
+            return socket.inet_ntoa(ip)
+        except:
+            logger.error("Failed to get ip on %s" % ifname)
+            return ""
+
+    @staticmethod
+    def set_ip_address(ifname, ip):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            bin_ip = socket.inet_aton(ip)
+            ifreq = struct.pack('16sH2s4s8s', ifname, socket.AF_INET,
+                                '\x00'*2, bin_ip, '\x00'*8)
+            fcntl.ioctl(s, SIOCSIFADDR, ifreq)
+            s.close()
+        except:
+            logger.error("Failed to set ip %s on %s" % (ip, ifname))
+            print "Failed to set ip %s on %s" % (ip, ifname)
+
+    @staticmethod
+    def get_netmask_int(netmask):
+        ret = 0
+        for n in range(0, netmask):
+            ret |= 1 << (31 - n)
+        return ret
+
+    @staticmethod
+    def get_mask(mask):
+        n = 0
+        while True:
+            if mask == 0:
+                break
+            mask &= (mask - 1)
+            n += 1
+        return n
+
+    @staticmethod
+    def convert_ip_to_int(ip):
+        ip_items = ip.split('.')
+        ip_int = 0
+        for item in ip_items:
+            ip_int = ip_int * 256 + int(item)
+        return ip_int
+
+    @staticmethod
+    def convert_int_to_ip(ip_int):
+        ip_items = ['0', '0', '0', '0']
+        for i in range(0, 4):
+            ip_items[3-i] = str(ip_int % 256)
+            ip_int = int((int(ip_int) - int(ip_items[3-i])) / 256)
+        return '.'.join(ip_items)
+
+    @staticmethod
+    def link_up(ifname):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        ifreq = struct.pack('16sH14s', ifname, AF_UNIX, '\x00'*14)
-        res = fcntl.ioctl(s.fileno(), SIOCGIFADDR, ifreq)
-        ip = struct.unpack('16sH2x4s8x', res)[2]
+        ifreq = struct.pack("16sh", ifname, 0)
+        flags = struct.unpack('16sh',
+                              fcntl.ioctl(s.fileno(), SIOCGIFFLAGS, ifreq))[1]
+
+        flags = flags | IFF_UP
+        ifreq = struct.pack('16sh', ifname, flags)
+        fcntl.ioctl(s.fileno(), SIOCSIFFLAGS, ifreq)
         s.close()
-        return socket.inet_ntoa(ip)
-    except:
-        logger.error("Failed to get ip on %s" % ifname)
-        return ""
 
-
-def set_ip_address(ifname, ip):
-    try:
+    @staticmethod
+    def link_down(ifname):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        bin_ip = socket.inet_aton(ip)
-        ifreq = struct.pack('16sH2s4s8s', ifname, socket.AF_INET,
-                            '\x00'*2, bin_ip, '\x00'*8)
-        fcntl.ioctl(s, SIOCSIFADDR, ifreq)
+        ifreq = struct.pack("16sh", ifname, 0)
+        flags = struct.unpack('16sh',
+                              fcntl.ioctl(s.fileno(), SIOCGIFFLAGS, ifreq))[1]
+
+        flags = flags & ~IFF_UP
+        ifreq = struct.pack('16sh', ifname, flags)
+        fcntl.ioctl(s.fileno(), SIOCSIFFLAGS, ifreq)
         s.close()
-    except:
-        logger.error("Failed to set ip %s on %s" % (ip, ifname))
-        print "Failed to set ip %s on %s" % (ip, ifname)
 
-
-def get_netmask_int(netmask):
-    ret = 0
-    for n in range(0, netmask):
-        ret |= 1 << (31 - n)
-    return ret
-
-
-def get_mask(mask):
-    n = 0
-    while True:
-        if mask == 0:
-            break
-        mask &= (mask - 1)
-        n += 1
-    return n
-
-
-def convert_ip_to_int(ip):
-    ip_items = ip.split('.')
-    ip_int = 0
-    for item in ip_items:
-        ip_int = ip_int * 256 + int(item)
-    return ip_int
-
-
-def convert_int_to_ip(ip_int):
-    ip_items = ['0', '0', '0', '0']
-    for i in range(0, 4):
-        ip_items[3-i] = str(ip_int % 256)
-        ip_int = int((int(ip_int) - int(ip_items[3-i])) / 256)
-    return '.'.join(ip_items)
-
-
-def link_up(ifname):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    ifreq = struct.pack("16sh", ifname, 0)
-    flags = struct.unpack('16sh',
-                          fcntl.ioctl(s.fileno(), SIOCGIFFLAGS, ifreq))[1]
-
-    flags = flags | IFF_UP
-    ifreq = struct.pack('16sh', ifname, flags)
-    fcntl.ioctl(s.fileno(), SIOCSIFFLAGS, ifreq)
-    s.close()
-
-
-def link_down(ifname):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    ifreq = struct.pack("16sh", ifname, 0)
-    flags = struct.unpack('16sh',
-                          fcntl.ioctl(s.fileno(), SIOCGIFFLAGS, ifreq))[1]
-
-    flags = flags & ~IFF_UP
-    ifreq = struct.pack('16sh', ifname, flags)
-    fcntl.ioctl(s.fileno(), SIOCSIFFLAGS, ifreq)
-    s.close()
-
-
-def link_status(ifname):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    ifreq = struct.pack("16sh", ifname, 0)
-    flags = struct.unpack('16sh',
-                          fcntl.ioctl(s.fileno(), SIOCGIFFLAGS, ifreq))[1]
-    if flags & IFF_UP:
-        return True
-    else:
-        return False
-    s.close()
-
-
-def get_netmask(ifname):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    ifreq = struct.pack('16sH14s', ifname, socket.AF_INET, '\x00'*14)
-    try:
-        res = fcntl.ioctl(s.fileno(), SIOCGIFNETMASK, ifreq)
-    except IOError:
+    @staticmethod
+    def link_status(ifname):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        ifreq = struct.pack("16sh", ifname, 0)
+        flags = struct.unpack('16sh',
+                            fcntl.ioctl(s.fileno(), SIOCGIFFLAGS, ifreq))[1]
+        if flags & IFF_UP:
+            return True
+        else:
+            return False
         s.close()
-        return ""
-    netmask = socket.ntohl(struct.unpack('16sH2xI8x', res)[2])
-    s.close()
-    return 32 - int(round(math.log(ctypes.c_uint32(~netmask).value + 1, 2), 1))
 
+    @staticmethod
+    def get_netmask(ifname):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        ifreq = struct.pack('16sH14s', ifname, socket.AF_INET, '\x00'*14)
+        try:
+            res = fcntl.ioctl(s.fileno(), SIOCGIFNETMASK, ifreq)
+        except IOError:
+            s.close()
+            return ""
+        netmask = socket.ntohl(struct.unpack('16sH2xI8x', res)[2])
+        s.close()
+        return 32 - int(round(math.log(ctypes.c_uint32(~netmask).value + 1, 2), 1))
 
-def set_netmask(ifname, netmask):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    netmask = ctypes.c_uint32(~((2 ** (32 - netmask)) - 1)).value
-    nmbytes = socket.htonl(netmask)
-    ifreq = struct.pack('16sH2si8s', ifname, socket.AF_INET,
-                        '\x00'*2, nmbytes, '\x00'*8)
-    fcntl.ioctl(s.fileno(), SIOCSIFNETMASK, ifreq)
-    s.close()
+    @staticmethod
+    def set_netmask(ifname, netmask):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        netmask = ctypes.c_uint32(~((2 ** (32 - netmask)) - 1)).value
+        nmbytes = socket.htonl(netmask)
+        ifreq = struct.pack('16sH2si8s', ifname, socket.AF_INET,
+                            '\x00'*2, nmbytes, '\x00'*8)
+        fcntl.ioctl(s.fileno(), SIOCSIFNETMASK, ifreq)
+        s.close()
 
-
-def get_net_interfaces():
-    return os.listdir("/sys/class/net")
+    @staticmethod
+    def get_net_interfaces():
+        return os.listdir("/sys/class/net")
 
 
 class vPDUHandler(SSHHandler):
@@ -461,7 +463,7 @@ class vPDUHandler(SSHHandler):
         if len(params) == 0:
             return
 
-        ifname_list = get_net_interfaces()
+        ifname_list = NetworkUtils.get_net_interfaces()
         if params[0] == 'link':
             if params[1] == 'list':
                 self.writeresponse(
@@ -480,11 +482,11 @@ class vPDUHandler(SSHHandler):
                     return
                 subcmd = params[2]
                 if subcmd == 'up':
-                    link_up(ifname)
+                    NetowrkUtils.link_up(ifname)
                 elif subcmd == 'down':
-                    link_down(ifname)
+                    NetworkUtils.link_down(ifname)
                 elif subcmd == 'status':
-                    ret = link_status(ifname)
+                    ret = NetworkUtils.link_status(ifname)
                     if ret:
                         self.writeresponse("%s link up" % ifname)
                     else:
@@ -500,23 +502,23 @@ class vPDUHandler(SSHHandler):
                 return
 
             if params[0] == 'get':
-                ip_address = get_ip_address(ifname)
-                netmask = get_netmask(ifname)
+                ip_address = NetworkUtils.get_ip_address(ifname)
+                netmask = NetworkUtils.get_netmask(ifname)
                 self.writeresponse(
                     colors.GREEN + "ip address: " + ip_address +
                     ", " + "netmask: " +
-                    convert_int_to_ip(get_netmask_int(netmask)) +
+                    NetworkUtils.convert_int_to_ip(NetworkUtils.get_netmask_int(netmask)) +
                     colors.NORMAL
                 )
             elif params[0] == 'set':
                 set_ip_address(ifname, params[2])
                 if len(params) > 3:
                     netmask = params[3]
-                    int_netmask = convert_ip_to_int(netmask)
-                    set_netmask(ifname, get_mask(int_netmask))
-                status = link_status(ifname)
+                    int_netmask = NetworkUtils.convert_ip_to_int(netmask)
+                    NetworkUtils.set_netmask(ifname, NetworkUtils.get_mask(int_netmask))
+                status = NetworkUtils.link_status(ifname)
                 if not status:
-                    link_up(ifname)
+                    NetworkUtils.link_up(ifname)
             else:
                 logger.error("unknown parameters.")
 
@@ -608,8 +610,7 @@ class vPDUHandler(SSHHandler):
                                        )
                     logger.info("vpdu service [%d] is restarted." % pid)
                     return
-            self.writeresponse("{0}Cannot restart vpdu service. pid {1}, \
-                               snmpsimd pid {2}{3}".format(colors.RED, pid,
+            self.writeresponse("{0}Cannot restart vpdu service. pid {1}, snmpsimd pid {2}{3}".format(colors.RED, pid,
                                                            snmpsim_pid,
                                                            colors.NORMAL)
                                )
@@ -664,7 +665,7 @@ class vPDUHandler(SSHHandler):
             if len(params) != 4:
                 self.writeresponse("Invalid parameters.")
                 return
-            pdu = int(params[1]) * 3 - 2
+            pdu = int(params[1])
             port = int(params[2])
             passwd = params[3]
             password.write_password(pdu, port, passwd)
@@ -672,7 +673,7 @@ class vPDUHandler(SSHHandler):
             if len(params) != 3:
                 self.writeresponse("Invalid parameters.")
                 return
-            pdu = int(params[1]) * 3 - 2
+            pdu = int(params[1])
             port = int(params[2])
             password_str = password.read_password(pdu, port)
             if password_str == "":
@@ -685,7 +686,7 @@ class vPDUHandler(SSHHandler):
                 self.writeresponse("Invalid parameters.")
                 return
 
-            pdu = int(params[1]) * 3 - 2
+            pdu = int(params[1])
             table = Texttable()
             table.header(["Port", "Password"])
             table.set_cols_dtype(['d', 't'])
