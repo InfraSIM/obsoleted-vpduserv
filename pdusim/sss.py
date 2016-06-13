@@ -7,8 +7,8 @@ import os
 import subprocess
 import time
 import signal
-import pdusim.common.logger as logger
-import pdusim.common.config as config
+import common.logger as logger
+import common.config as config
 
 snmpsim_pid_file = "/var/run/snmpsim/snmpsimd.pid"
 

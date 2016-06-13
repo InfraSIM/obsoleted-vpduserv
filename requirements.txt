@@ -1,0 +1,7 @@
+pysnmp>=4.2.6
+pyasn1
+snmpsim==0.3.0
+paramiko
+six
+ecdsa
+texttable

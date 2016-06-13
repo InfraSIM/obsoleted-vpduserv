@@ -5,8 +5,8 @@ Copyright @ 2015 EMC Corporation All Rights Reserved
 '''
 import select
 import sys
-import pdusim.common.logger as logger
-import pdusim.basepdu as basepdu
+import common.logger as logger
+import basepdu
 
 
 class vSentry(basepdu.vPDUBase):

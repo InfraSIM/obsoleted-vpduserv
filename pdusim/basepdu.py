@@ -6,8 +6,8 @@ Copyright @ 2015 EMC Corporation All Rights Reserved
 
 import threading
 import Queue
-import pdusim.common.logger as logger
-from pdusim.common.colors import bcolors as colors
+import common.logger as logger
+from common.colors import bcolors as colors
 
 from abc import ABCMeta, abstractmethod
 import sys

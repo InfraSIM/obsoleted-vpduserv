@@ -6,8 +6,8 @@ Copyright @ 2015 EMC Corporation All Rights Reserved
 import time
 import basepdu
 import threading
-import pdusim.password as pwd
-import pdusim.common.logger as logger
+import password as pwd
+import common.logger as logger
 
 
 class vHawk(basepdu.vPDUBase):

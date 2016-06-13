@@ -4,4 +4,3 @@ dist
 .ropeproject
 build/
 *.bak
-*.txt

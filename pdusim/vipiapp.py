@@ -6,8 +6,8 @@ Copyright @ 2015 EMC Corporation All Rights Reserved
 import sys
 import select
 import threading
-import pdusim.vhawk as vhawk
-import pdusim.common.logger as logger
+import vhawk
+import common.logger as logger
 
 
 class vIPIAppliance(object):

@@ -5,8 +5,8 @@ import glob
 import sys
 import os
 
-data_files = [ 
-        (sys.prefix + '/pdusim/' + 'variation',glob.glob(os.path.join('variation', '*.py'))) 
+data_files = [
+        (sys.prefix + '/pdusim/' + 'variation',glob.glob(os.path.join('variation', '*.py')))
 ]
 
 for x in os.walk('snmpdata'):
@@ -50,6 +50,6 @@ setup(
             "Programming Language :: Python :: 2.6",
             "Programming Language :: Python :: 2.7",
         ],
-        scripts = ["vpdud.py", "server.py"],
+        scripts = ["infrasim-pdusimd.py", "infrasim-pduserv.py"],
         data_files = data_files,
 )

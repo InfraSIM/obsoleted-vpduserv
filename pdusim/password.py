@@ -6,8 +6,8 @@ Copyright @ 2015 EMC Corporation All Rights Reserved
 import time
 import os
 import re
-import pdusim.common.logger as logger
-import pdusim.common.config as config
+import common.logger as logger
+import common.config as config
 
 
 def read_password(pdu, port):

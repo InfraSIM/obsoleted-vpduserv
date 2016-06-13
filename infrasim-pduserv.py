@@ -45,7 +45,7 @@ import pdusim.common.config as config
 import pdusim.common.daemon
 import pdusim.mapping_file as mapping_file
 
-server_pid_file = "/var/run/vpdud/server.pid"
+server_pid_file = "/var/run/pdusim/infrasim-pduserv.pid"
 SIOCGIFINDEX = 0x8933
 SIOCGIFFLAGS = 0x8913
 SIOCSIFFLAGS = 0x8914
@@ -68,7 +68,7 @@ AF_INET = 2
 
 def get_vpdu_pid():
     try:
-        fd = open("/var/run/vpdud/vpdud.pid", "r")
+        fd = open("/var/run/pdusim/infrasim-pdusimd.pid", "r")
         line = fd.readline()
         pid = line.strip(os.linesep)
         fd.close()
@@ -79,14 +79,14 @@ def get_vpdu_pid():
 
 
 def start_vpdu():
-    vpdu_command = "vpdud.py"
-    if not os.path.exists("/usr/bin/vpdud.py") or \
-            not os.path.exists("/usr/local/bin"):
+    vpdu_command = "infrasim-pdusimd.py"
+    if not os.path.exists("/usr/bin/infrasim-pdusimd.py") or \
+            not os.path.exists("/usr/local/bin/infrasim-pdusimd.py"):
         vpdu_command = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "vpdud.py")
+                                    "infrasim-pdusimd.py")
 
     command = vpdu_command + " " + \
-        "-d --logging-method=file:/var/log/vpdud/vpdud.log"
+        "-d --logging-method=file:/var/log/pdusim/pdusim.log"
     logger.info(command)
     retcode = subprocess.call(command, shell=True)
     # wait service started
@@ -739,7 +739,7 @@ def init_signal():
 
 
 def usage():
-    print("Usage: server.py [OPTIONS]")
+    print("Usage: {} [OPTIONS]".format(sys.argv[0]))
     print("Options are:")
     print("-d           Run in daemon")
     print("-h           Help")
@@ -747,7 +747,7 @@ def usage():
 
 if __name__ == '__main__':
     daemon = False
-    logger.initialize("vpdud", "stdout")
+    logger.initialize("pdusim", "stdout")
     try:
         opts, args = getopt.getopt(sys.argv[1:],
                                    "dh",
@@ -759,7 +759,7 @@ if __name__ == '__main__':
             elif opt in ("-d", "--daemonize"):
                 daemon = True
             elif opt == "--logging-method":
-                logger.initialize("vpdud", *arg.split(':'))
+                logger.initialize("pdusim", *arg.split(':'))
     except getopt.GetoptError:
         usage()
         sys.exit(1)
