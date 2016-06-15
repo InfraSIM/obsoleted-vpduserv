@@ -6,8 +6,8 @@ Copyright @ 2015 EMC Corporation All Rights Reserved
 import time
 import basepdu
 import threading
-import pdusim.password as pwd
-import pdusim.common.logger as logger
+import password as pwd
+import common.logger as logger
 
 
 class vHawk(basepdu.vPDUBase):
@@ -39,17 +39,17 @@ class vHawk(basepdu.vPDUBase):
         '''
         for outlet_index in range(self.max_outlets):
             on_offset = self.pduouton_oid_offset + "." + \
-                str(self.to_pdu(self.pdu))
+                str(self.to_oid_pdu(self.pdu))
             self.set_outlet_mode(on_offset, outlet_index + 1, "error")
 
     def __init_outlets_password(self):
         for outlet_index in range(self.max_outlets):
             pwd_offset = self.pduoutpwd_oid_offset + "." + \
-                str(self.to_pdu(self.pdu))
+                str(self.to_oid_pdu(self.pdu))
             self.set_outlet_field(pwd_offset, outlet_index + 1,
                                   self.default_password)
 
-    def to_pdu(self, index):
+    def to_oid_pdu(self, index):
         '''
         index 1 ~ 6
         Convert the index to PDU ID in oid which defined by vendor.
@@ -77,7 +77,7 @@ class vHawk(basepdu.vPDUBase):
         logger.info("handle outlet {0}/{1}, action: {2}".
                     format(outlet, self.pdu, self.actions[int(action)]))
 
-        on_offset = self.pduouton_oid_offset + "." + str(self.to_pdu(self.pdu))
+        on_offset = self.pduouton_oid_offset + "." + str(self.to_oid_pdu(self.pdu))
         action_in_oid = self.extract(self.get_outlet_field(on_offset, outlet))
 
         logger.warn("action: {0}, action_in_oid: {1}".
@@ -125,7 +125,7 @@ class vHawk(basepdu.vPDUBase):
     # running in timer
     def do_password_check(self, pdu, outlet):
         logger.info("Timer is expired for {0}/{1}".format(outlet, pdu))
-        on_offset = self.pduouton_oid_offset + "." + str(self.to_pdu(self.pdu))
+        on_offset = self.pduouton_oid_offset + "." + str(self.to_oid_pdu(self.pdu))
         self.set_outlet_mode(on_offset, outlet, "error")
 
     def handle_password(self, args):
@@ -133,8 +133,8 @@ class vHawk(basepdu.vPDUBase):
         password = args[1]
         logger.info("handle password {0}/{1}, password {2}".
                     format(outlet, self.pdu, password))
-        pwd_offset = self.pduoutpwd_oid_offset + "." + str(self.to_pdu(self.pdu))
-        on_offset = self.pduouton_oid_offset + "." + str(self.to_pdu(self.pdu))
+        pwd_offset = self.pduoutpwd_oid_offset + "." + str(self.to_oid_pdu(self.pdu))
+        on_offset = self.pduouton_oid_offset + "." + str(self.to_oid_pdu(self.pdu))
 
         password_in_oid = self.get_outlet_field(pwd_offset, outlet)
 

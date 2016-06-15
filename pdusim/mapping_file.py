@@ -5,7 +5,7 @@ Copyright @ 2015 EMC Corporation All Rights Reserved
 '''
 
 import ConfigParser
-import pdusim.common.logger as logger
+import common.logger as logger
 import os
 
 _mapping_file_handle = None

@@ -4,9 +4,9 @@ Copyright @ 2015 EMC Corporation All Rights Reserved
 *********************************************************
 '''
 import time
-import pdusim.ncbase as ncbase
-import pdusim.common.logger as logger
-import pdusim.common.sshclient as sshclient
+import ncbase
+import common.logger as logger
+import common.sshclient as sshclient
 
 
 class VMwareHandler(ncbase.VirtualNodeHandler):

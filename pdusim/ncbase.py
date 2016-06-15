@@ -4,8 +4,8 @@ Copyright @ 2015 EMC Corporation All Rights Reserved
 *********************************************************
 '''
 from abc import ABCMeta, abstractmethod
-import pdusim.common.config as config
-import pdusim.mapping_file as mapping_file
+import common.config as config
+import mapping_file
 
 
 class VirtualNodeHandler(object):

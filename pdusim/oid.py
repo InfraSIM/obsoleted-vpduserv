@@ -9,8 +9,8 @@ import sqlite3
 import shelve
 from pysnmp.proto import rfc1902
 from abc import ABCMeta, abstractmethod
-import pdusim.common.config as config
-import pdusim.common.logger as logger
+import common.config as config
+import common.logger as logger
 
 
 class OIDBase(object):

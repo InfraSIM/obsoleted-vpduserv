@@ -39,7 +39,7 @@ import pdusim.mapping_file as mapping_file
 
 vpdu_handler = None
 sim_serv = None
-vpdud_pid_file = "/var/run/vpdud/vpdud.pid"
+vpdud_pid_file = "/var/run/pdusim/infrasim-pdusimd.pid"
 
 
 def signal_handler(signum, frame):
@@ -59,7 +59,7 @@ def init_signal():
 
 
 def usage():
-    print("Usage: vpdud.py [OPTIONS]")
+    print("Usage:{} [OPTIONS]".format(sys.argv[0]))
     print("Options are:")
     print("-d           Run in daemon")
     print("-h           Help")
@@ -69,7 +69,7 @@ def usage():
 if __name__ == '__main__':
     pdu_device = ""
     daemon = False
-    logger.initialize("vpdud", "stdout")
+    logger.initialize("pdusim", "stdout")
     try:
         opts, args = getopt.getopt(sys.argv[1:], "dh",
                                    ["daemonize", "help", "logging-method="])
@@ -80,7 +80,7 @@ if __name__ == '__main__':
             elif opt in ("-d", "--daemonize"):
                 daemon = True
             elif opt == "--logging-method":
-                logger.initialize("vpdud", *arg.split(':'))
+                logger.initialize("pdusim", *arg.split(':'))
     except getopt.GetoptError:
         usage()
         sys.exit(1)
