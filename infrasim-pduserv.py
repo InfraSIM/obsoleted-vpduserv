@@ -11,13 +11,10 @@ import time
 import sys
 import os
 import signal
-import subprocess
-import socket
 import struct
 import fcntl
 import ctypes
 import math
-import shutil
 import getopt
 
 install_data_dir = [
@@ -37,13 +34,13 @@ for dir in install_data_dir:
 from texttable import Texttable, get_color_string, bcolors
 import pdusim.password as password
 import pdusim.reportip
-from pdusim.sss import SNMPSimService
 import pdusim.common.logger as logger
 from pdusim.common.colors import bcolors as colors
 from pdusim.common.sshsrv import SSHHandler, command
 import pdusim.common.config as config
 import pdusim.common.daemon
 import pdusim.mapping_file as mapping_file
+import pdusim.pdusim
 
 server_pid_file = "/var/run/pdusim/infrasim-pduserv.pid"
 SIOCGIFINDEX = 0x8933
@@ -57,7 +54,6 @@ SIOCGIFNETMASK = 0x891B
 SIOCSIFNETMASK = 0x891C
 SIOCETHTOOL = 0x8946
 
-config_home_dir = ""
 # From linux/if.h
 IFF_UP = 0x1
 
@@ -65,34 +61,7 @@ IFF_UP = 0x1
 AF_UNIX = 1
 AF_INET = 2
 
-
-def get_vpdu_pid():
-    try:
-        fd = open("/var/run/pdusim/infrasim-pdusimd.pid", "r")
-        line = fd.readline()
-        pid = line.strip(os.linesep)
-        fd.close()
-        return int(pid)
-    except:
-        pass
-    return -1
-
-
-def start_vpdu():
-    vpdu_command = "infrasim-pdusimd.py"
-    if not os.path.exists("/usr/bin/infrasim-pdusimd.py") or \
-            not os.path.exists("/usr/local/bin/infrasim-pdusimd.py"):
-        vpdu_command = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "infrasim-pdusimd.py")
-
-    command = vpdu_command + " " + \
-        "-d --logging-method=file:/var/log/pdusim/pdusim.log"
-    logger.info(command)
-    retcode = subprocess.call(command, shell=True)
-    # wait service started
-    time.sleep(10)
-    return retcode
-
+pdu_sim = None
 
 class NetworkUtils:
     @staticmethod
@@ -534,108 +503,65 @@ class vPDUHandler(SSHHandler):
         if len(params) == 0:
             return
 
+        global pdu_sim
         logger.info("Executing action: %s" % params[0])
         if params[0] == 'start':
-            pid = get_vpdu_pid()
-            logger.info("vpdu pid: %d" % pid)
-            if pid > 0:
+            if pdu_sim.is_alive():
                 self.writeresponse("%svpdu service [%d] is alredy running.%s"
-                                   % (colors.GREEN, pid, colors.NORMAL))
+                                   % (colors.GREEN, pdu_sim.pid, colors.NORMAL))
             else:
-                ret = start_vpdu()
-                if ret == 0:
-                    pid = get_vpdu_pid()
-                    if pid > 0:
-                        self.writeresponse("%svpdu service [%d] is started.%s"
-                                           % (colors.GREEN, pid, colors.NORMAL))
-                        return
-                else:
-                    # check if the snmpsim service is already running.
-                    snmpsim_pid = SNMPSimService.getpid()
-                    if snmpsim_pid > 0:
-                        os.kill(snmpsim_pid, signal.SIGTERM)
-                    self.writeresponse("%sFailed to start vpdu service.%s"
-                                       % (colors.RED, colors.NORMAL))
-                    logger.error("Failed to start vpdu service.")
+                pdu_sim = pdusim.pdusim.PDUSim()
+                pdu_sim.set_daemon()
+                pdu_sim.start()
+                time.sleep(1)
+                if pdu_sim.is_alive():
+                    self.writeresponse("%svpdu service [%d] is started.%s"
+                                    % (colors.GREEN, pdu_sim.pid, colors.NORMAL))
         elif params[0] == 'stop':
-            pid = get_vpdu_pid()
-            if pid < 0:
+            if not pdu_sim.is_alive():
                 self.writeresponse("%svpdu service is already stopped.%s"
                                    % (colors.GREEN, colors.NORMAL))
                 return
 
-            if pid > 0:
-                os.kill(pid, signal.SIGTERM)
+            if pdu_sim.is_alive():
+                pdu_sim.stop()
 
-            # Wait 1 second for snmpsim exit, and then end then check again
             time.sleep(1)
-            snmpsim_pid = SNMPSimService.getpid()
-            if snmpsim_pid > 0:
-                os.kill(snmpsim_pid, signal.SIGTERM)
-
-            pid = get_vpdu_pid()
-            snmpsim_pid = SNMPSimService.getpid()
-
-            if pid < 0 and snmpsim_pid < 0:
+            if not pdu_sim.is_alive():
                 self.writeresponse("%svpdu service is stopped.%s"
-                                   % (colors.GREEN, colors.NORMAL))
-            else:
-                self.writeresponse("%sCannot stop vpdu service.vpdu pid %d, \
-                                   snmpsim pid %d.%s"
-                                   % (colors.RED, pid, snmpsim_pid,
-                                      colors.NORMAL))
-                logger.error("Cannot stop vpdu service. vpdu pid %d, \
-                             snmpsim pid %d" % (pid, snmpsim_pid))
+                                    % (colors.GREEN, colors.NORMAL))
+
         elif params[0] == 'restart':
-            pid = get_vpdu_pid()
-            if pid > 0:
-                os.kill(pid, signal.SIGTERM)
+            if pdu_sim.is_alive():
+                pdu_sim.stop()
 
             # Wait 1 second for snmpsim exit, and then end then check again
             time.sleep(1)
-            snmpsim_pid = SNMPSimService.getpid()
-            if snmpsim_pid > 0:
-                os.kill(snmpsim_pid, signal.SIGTERM)
 
-            self.writeresponse("{0}vpdu service is stopped.{1}"
-                               .format(colors.GREEN, colors.NORMAL))
-            logger.info("vpdu service is stopped.")
-            ret = start_vpdu()
-            if ret == 0:
-                pid = get_vpdu_pid()
-                snmpsim_pid = SNMPSimService.getpid()
-                if pid > 0 and snmpsim_pid > 0:
-                    self.writeresponse("{0}vpdu service [{1}] is restarted.{2}"
-                                       .format(colors.GREEN, pid, colors.NORMAL)
-                                       )
-                    logger.info("vpdu service [%d] is restarted." % pid)
+            if pdu_sim:
+                pdu_sim = pdusim.pdusim.PDUSim()
+                pdu_sim.set_daemon()
+                pdu_sim.start()
+                time.sleep(1)
+                if pdu_sim.is_alive():
+                    self.writeresponse("%svpdu service [%d] is restarted.%s"
+                                    % (colors.GREEN, pdu_sim.pid, colors.NORMAL))
+                    logger.info("vpdu service [%d] is restarted." % pdu_sim.pid)
                     return
-            self.writeresponse("{0}Cannot restart vpdu service. pid {1}, snmpsimd pid {2}{3}".format(colors.RED, pid,
-                                                           snmpsim_pid,
-                                                           colors.NORMAL)
-                               )
             logger.error("Cannot restart vpdu service.")
         elif params[0] == 'status':
-            vpdu_pid = get_vpdu_pid()
-            snmpsim_pid = SNMPSimService.getpid()
-            response = ""
-            if vpdu_pid > 0 and snmpsim_pid > 0:
-                response = "%svpdu service [%d] is running.%s" % \
-                        (colors.GREEN, vpdu_pid, colors.NORMAL)
-                self.writeresponse(response)
-                logger.info(response)
-            elif vpdu_pid < 0 and snmpsim_pid < 0:
-                response = \
-                    "%svpdu service is not running.%s" % (colors.RED,
-                                                          colors.NORMAL)
-                self.writeresponse(response)
-                logger.info(response)
+            if pdu_sim.is_alive() is True:
+               response = "%svpdu service [%d] is running.%s" % \
+                        (colors.GREEN, pdu_sim.pid, colors.NORMAL)
+               self.writeresponse(response)
+               logger.info(response)
             else:
-                response = "{0}There is an exception, \
-                    vpdu pid {1}, snmp sim pid {2}.{3}"\
-                    .format(colors.RED, vpdu_pid, snmpsim_pid, colors.NORMAL)
-                self.writeresponse(response)
-                logger.info(response)
+                if pdu_sim.is_alive() is False:
+                    response = \
+                        "%svpdu service is not running.%s" % (colors.RED,
+                                                            colors.NORMAL)
+                    self.writeresponse(response)
+                    logger.info(response)
 
     @command(['password', 'pass'])
     def command_password(self, params):
@@ -698,45 +624,8 @@ class vPDUHandler(SSHHandler):
                 table.add_row([port_index + 1, passwd])
             self.writeresponse(table.draw())
 
-    @command(["save"])
-    def command_confs(self, params):
-        '''
-        save
-
-        save all configurations including password, mappings, host configuration
-        '''
-        # save configuration file to writable disk
-        if not os.path.exists("/boot/conf"):
-            shutil.copytree(os.path.join(config_home_dir, "conf"), "/boot/conf")
-        else:
-            for path, _, files in os.walk(
-                os.path.join(config_home_dir, "conf")
-            ):
-                for f in files:
-                    shutil.copy(os.path.join(path, f), "/boot/conf")
-
-
 class vPDUServer(SocketServer.TCPServer):
     SocketServer.TCPServer.allow_reuse_address = True
-
-
-def signal_handler(signum, frame):
-    vpdu_pid = get_vpdu_pid()
-    if vpdu_pid > 0:
-        os.kill(vpdu_pid, signal.SIGTERM)
-
-    snmpsim_pid = SNMPSimService.getpid()
-    if snmpsim_pid > 0:
-        os.kill(snmpsim_pid, signal.SIGTERM)
-
-    logger.info("Exit server.")
-    sys.exit(0)
-
-
-def init_signal():
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
 
 def usage():
     print("Usage: {} [OPTIONS]".format(sys.argv[0]))
@@ -745,6 +634,17 @@ def usage():
     print("-h           Help")
     print("--logging-method=<file:file_name|stderr|stdout>")
 
+def signal_handler(signum, frame):
+    logger.info("Signal {0} receivced.".format(signum))
+    if signum == 2:
+        if pdu_sim is not None and pdu_sim.is_alive():
+            pdu_sim.stop()
+    logger.info("vPDU exit.")
+    sys.exit(0)
+
+def init_signal():
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 if __name__ == '__main__':
     daemon = False
     logger.initialize("pdusim", "stdout")
@@ -767,27 +667,12 @@ if __name__ == '__main__':
     if daemon:
         pdusim.common.daemon.daemonize(server_pid_file)
 
+    logger.info("vPDU started")
     init_signal()
-    # report_ip_thread = threading.Thread(target = pdusim.reportip.rptClient)
-    # report_ip_thread.start()
-
-    # Find the conf home dir
-    for dir in install_data_dir:
-        path = os.path.join(dir, 'conf', 'host.conf')
-        if os.path.exists(path):
-            config_home_dir = dir
-            break
-
-    if config_home_dir == "":
-        logger.error("Cann't find conf dir.")
-        sys.exit(1)
-
-    conf = config.Config(config_home_dir)
-    config.set_conf_instance(conf)
-
-    mapping_file.set_mapping_file_handle(
-        mapping_file.MappingFileHandle(config_home_dir)
-    )
+    pdu_sim = pdusim.pdusim.PDUSim()
+    pdu_sim.set_daemon()
+    pdu_sim.start()
+    logger.info("PDU service PID: {}".format(pdu_sim.pid))
 
     logger.info("Server started")
     server = vPDUHandler()
