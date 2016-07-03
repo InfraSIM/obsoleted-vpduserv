@@ -82,25 +82,8 @@ class PDUSim(multiprocessing.Process):
         else:
             self.__vpdu_handler = vipiapp.vIPIAppliance(oid_handler, vm_handler, p)
 
-#        self._init_signal()
-
         # Create SNMP simulator service
         self.__snmp_sim_serv = SNMPSimService()
-
-#    def _signal_handler(self, signum, frame):
-#        logger.info("Signal {0} receivced.".format(signum))
-#        if self.__vpdu_handler:
-#            self.__vpdu_handler.stop()
-#
-#        if self.__snmp_sim_serv:
-#            self.__snmp_sim_serv.stop()
-#        logger.info("vPDU exit.")
-#        sys.exit(0)
-#
-#    def _init_signal(self):
-#        signal.signal(signal.SIGINT, self._signal_handler)
-#        signal.signal(signal.SIGTERM, self._signal_handler)
-#
 
     def run(self):
         retcode = self.__snmp_sim_serv.start()
@@ -117,5 +100,12 @@ class PDUSim(multiprocessing.Process):
         if self.__snmp_sim_serv:
             self.__snmp_sim_serv.stop()
 
-        if self.is_alive():
-            self.terminate()
+        # when user run 'stop' command, the function will be called twice,
+        # first call is originated from stop command, the second call is originated from
+        # signal handler, but terminate could only be called once, so ignore
+        # the exception in the second call.
+        try:
+            if self.is_alive():
+                self.terminate()
+        except Exception as ex:
+            pass

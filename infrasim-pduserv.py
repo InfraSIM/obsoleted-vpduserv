@@ -636,15 +636,15 @@ def usage():
 
 def signal_handler(signum, frame):
     logger.info("Signal {0} receivced.".format(signum))
-    if signum == 2:
-        if pdu_sim is not None and pdu_sim.is_alive():
-            pdu_sim.stop()
+    if pdu_sim is not None and pdu_sim.is_alive():
+        pdu_sim.stop()
     logger.info("vPDU exit.")
     sys.exit(0)
 
 def init_signal():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+
 if __name__ == '__main__':
     daemon = False
     logger.initialize("pdusim", "stdout")
