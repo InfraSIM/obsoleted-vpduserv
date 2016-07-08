@@ -13,13 +13,9 @@ vpduserv could be run on any linux-based operating system, but prior to starting
 
 1. Launch vPDU service
 
-    <pre><code>infrasim-pdusimd.py -d --logging-method=file:/var/log/pdusim/pdusim.log</code></pre>
-
-2. Launch remote control service. 
-
     <pre><code>infrasim-pduserv.py -d --logging-method=file:/var/log/pdusim/pdusim.log</code></pre>
 
-3. Login into vPDU control interface with ssh to configure vPDU 
+2. Login into vPDU control interface with ssh to configure vPDU 
     <pre><code>ssh &lt;vPDU IP address&gt; -p 20022</code></pre>
 
 **Note:** As to how to use vPDU, please reference vPDU Simulation section in [infrasim user guide](http://infrasim.readthedocs.org/en/latest/userguide.html) for more details.
