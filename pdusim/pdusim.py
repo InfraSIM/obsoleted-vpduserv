@@ -1,19 +1,8 @@
 import os
 import sys
+import common.helper as helper
 
-install_datadir = [
-    os.path.join(os.environ['HOME'], '.pdusim'),
-    os.path.join(sys.prefix, 'pdusim'),
-    os.path.join(sys.prefix, 'share', 'pdusim'),
-    os.path.join(os.path.split(__file__)[0], 'pdusim'),
-    os.path.dirname(os.path.abspath(__file__))
-]
-
-for dir in install_datadir:
-    path = os.path.join(dir, 'third-party')
-    if os.path.exists(path):
-        for d in os.listdir(path):
-            sys.path.insert(0, os.path.join(path, d))
+helper.add_third_party_to_path()
 
 import common.config as config
 from oid import FileOIDHandler, SqliteOIDHandler
@@ -33,20 +22,13 @@ class PDUSim(multiprocessing.Process):
         self.name = "vPDU Service"
         self.__vpdu_handler = None
         self.__snmp_sim_serv = None
-        self.init()
 
     def set_daemon(self):
         self.daemon = True
 
     def init(self):
-        configdir_found = False
-        for dir in install_datadir:
-            path = os.path.join(dir, 'conf', 'host.conf')
-            if os.path.exists(path):
-                configdir_found = True
-                break
-
-        if not configdir_found:
+        dir = helper.get_install_dir()
+        if not dir:
             logger.error("Don't find the configuration dir.")
             sys.exit(1)
 
@@ -86,6 +68,7 @@ class PDUSim(multiprocessing.Process):
         self.__snmp_sim_serv = SNMPSimService()
 
     def run(self):
+        self.init()
         retcode = self.__snmp_sim_serv.start()
         if retcode < 0:
             logger.error("Failed to start snmpsimd service!")

@@ -16,20 +16,9 @@ import fcntl
 import ctypes
 import math
 import getopt
+import pdusim.common.helper as helper
 
-install_data_dir = [
-    os.path.join(os.environ['HOME'], '.pdusim'),
-    os.path.join(sys.prefix, 'pdusim'),
-    os.path.join(sys.prefix, 'share', 'pdusim'),
-    os.path.join(os.path.split(__file__)[0], 'pdusim'),
-    os.path.dirname(os.path.abspath(__file__))
-]
-
-for dir in install_data_dir:
-    path = os.path.join(dir, 'third-party')
-    if os.path.exists(path):
-        for d in os.listdir(path):
-            sys.path.insert(0, os.path.join(path, d))
+helper.add_third_party_to_path()
 
 from texttable import Texttable, get_color_string, bcolors
 import pdusim.password as password
@@ -193,8 +182,13 @@ class vPDUHandler(SSHHandler):
 
     def __init__(self):
         super(vPDUHandler, self).__init__()
-        self.config_instance = config.get_conf_instance()
-        self.mapping_file_handle = mapping_file.get_mapping_file_handle()
+        install_dir = helper.get_install_dir()
+        self.config_instance = config.get_conf_instance() \
+                               or config.Config(install_dir)
+        config.set_conf_instance(self.config_instance)
+        self.mapping_file_handle = mapping_file.get_mapping_file_handle() \
+                                   or mapping_file.MappingFileHandle(install_dir)
+        mapping_file.set_mapping_file_handle(self.mapping_file_handle)
 
     @command(['config'])
     def command_config(self, params):
@@ -276,6 +270,18 @@ class vPDUHandler(SSHHandler):
                 table_str = table.draw()
                 self.writeresponse(table_str)
                 logger.info("\n" + table_str)
+            elif params[1] == 'list':
+                self.config_instance.init()
+                table = Texttable()
+                table.add_row(['pdu name', self.config_instance.pdu_name])
+                table.add_row(['dbtype', self.config_instance.db_type])
+                table.add_row(['database', self.config_instance.db_file])
+                table.add_row(['snmpdata', self.config_instance.snmp_data_dir])
+                table.add_row(['simfile', self.config_instance.sim_file])
+                table_str = table.draw()
+                self.writeresponse(table_str)
+                logger.info("\n" + table_str)
+
             else:
                 logger.error("Unknown command {0}".format(params[0]))
         elif params[0] == "esxi":
